@@ -78,12 +78,6 @@ app.post('/links',
 // Write your authentication routes here
 /************************************************************/
 
-/*
-app.post /signup
-checks the username, if there's one
-
-*/
-
 app.get('/login',
 (req, res) => {
   res.render('login');
@@ -102,11 +96,11 @@ app.post('/signup',
     .then(data => {
       console.log('the post data is here-->', data);
       if (data !== undefined) {
-        console.log("Username already exists. Please use another username");
+        // console.log("Username already exists. Please use another username");
         throw 'we found you..going to login instead';
       } else {
         return models.Users.create({username, password});
-        console.log("User was created");
+        // console.log("User was created");
       }
     })
     .error(error => {
@@ -123,14 +117,14 @@ app.post('/signup',
 
 app.post('/login',
 (req, res, next) => {
-  console.log('this is the req.body to post--->', req.body);
+  // console.log('this is the req.body to post--->', req.body);
   var username = req.body.username;
   var password = req.body.password;
 
   models.Users.get({username: username})
     .then(data => {
       if (data) {
-        console.log('the post data is here-->', data);
+        // console.log('the post data is here-->', data);
         var passwordDb = data.password;
         var salt = data.salt;
         if (models.Users.compare(password, passwordDb, salt)) {
