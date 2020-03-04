@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 app.get('/',
 (req, res) => {
+  console.log('this is req.header--->', req.headers);
   res.render('index');
 });
 
@@ -120,6 +121,8 @@ app.post('/login',
   // console.log('this is the req.body to post--->', req.body);
   var username = req.body.username;
   var password = req.body.password;
+
+  console.log('this is req.header--->', req.headers);
 
   models.Users.get({username: username})
     .then(data => {
