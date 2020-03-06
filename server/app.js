@@ -4,6 +4,7 @@ const utils = require('./lib/hashUtils');
 const partials = require('express-partials');
 const bodyParser = require('body-parser');
 const Auth = require('./middleware/auth');
+const cookie = require('./middleware/cookieParser');
 const models = require('./models');
 
 const app = express();
@@ -14,6 +15,8 @@ app.use(partials());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
+app.use(Auth.createSession);
+app.use(cookie);
 
 
 
@@ -90,30 +93,37 @@ app.get('/signup',
 });
 
 app.post('/signup',
-(req, res, next) => {
+(req, res) => {
   var username = req.body.username;
   var password = req.body.password;
-  models.Users.get({username: req.body.username})
+  return models.Users.get({username})
     .then(data => {
       console.log('the post data is here-->', data);
-      if (data !== undefined) {
-        // console.log("Username already exists. Please use another username");
-        throw 'we found you..going to login instead';
-      } else {
+      if (!data) {
         return models.Users.create({username, password});
-        // console.log("User was created");
+      };
+
+      return 'User created!';
+      // } else {
+      //   console.log("Username already exists. Login instead.");
+      //   res.redirect('/login');
+      //   // console.log("User was created");
+      // }
+    })
+    .then(data => {
+      if (data === 'User created!') {
+        res.redirect('/signup');
+      } else {
+        Auth.createSession(req, res);
+        res.redirect('/');
       }
     })
     .error(error => {
       res.status(500).send(error);
     })
-    .catch(err => {
-      if (err === 'we found you..going to login instead') {
-        res.redirect('/login');
-      } else {
-        res.status(200).redirect('/');
-      }
-    });
+    // .catch(() => {
+    //   res.status(200).redirect('/');
+    // });
 });
 
 app.post('/login',
@@ -122,7 +132,9 @@ app.post('/login',
   var username = req.body.username;
   var password = req.body.password;
 
-  console.log('this is req.header--->', req.headers);
+  // console.log('this is req=====>', req);
+  console.log('this is the req.header', req.headers);
+  console.log('this is the req.cookie', req.headers.cookies);
 
   models.Users.get({username: username})
     .then(data => {
@@ -131,8 +143,19 @@ app.post('/login',
         var passwordDb = data.password;
         var salt = data.salt;
         if (models.Users.compare(password, passwordDb, salt)) {
-          res.redirect('/');
+          return 'success';
+          //res.redirect('/');
         }
+      }
+       else {
+        // res.redirect('/login');
+        return "Invalid username or password";
+      }
+    })
+    .then(data => {
+      if (data === 'success') {
+        Auth.createSession(req, res);
+        res.redirect('/');
       } else {
         res.redirect('/login');
       }
