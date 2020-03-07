@@ -107,6 +107,10 @@ app.post('/signup',
 (req, res) => {
   var username = req.body.username;
   var password = req.body.password;
+  if (!username) {
+    res.redirect('/signup');
+    return;
+  }
 
   return models.Users.get({username})
     .then(userInfo => {

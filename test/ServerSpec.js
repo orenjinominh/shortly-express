@@ -147,6 +147,27 @@ describe('', function() {
       });
     });
 
+    it('signup does not create a new user record if username is empty', function(done) {
+      var options = {
+        'method': 'POST',
+        'uri': 'http://127.0.0.1:4568/signup',
+        'json': {
+          'username': '',
+          'password': 'Samantha'
+        }
+      };
+
+      request(options, function(error, res, body) {
+        var queryString = 'SELECT * FROM users where username = ""';
+        db.query(queryString, function(err, rows) {
+          if (err) { done(err); }
+          var user = rows[0];
+          expect(user).to.not.exist;
+          done();
+        });
+      });
+    });
+
     it('does not store the user\'s original text password', function(done) {
       var options = {
         'method': 'POST',
@@ -275,7 +296,43 @@ describe('', function() {
         done();
       });
     });
+
+
+    it('Users that enter no password are kept on login page', function(done) {
+      var options = {
+        'method': 'POST',
+        'uri': 'http://127.0.0.1:4568/login',
+        'json': {
+          'username': 'Samantha',
+          'password': ''
+        }
+      };
+      request(options, function(error, res, body) {
+        if (error) { return done(error); }
+        expect(res.headers.location).to.equal('/login');
+        done();
+      });
+    });
+
+
+  it('Users that enter incorrect username are kept on login page', function(done) {
+    var options = {
+      'method': 'POST',
+      'uri': 'http://127.0.0.1:4568/login',
+      'json': {
+        'username': 'Bill',
+        'password': 'Samantha'
+      }
+    };
+
+
+    request(options, function(error, res, body) {
+      if (error) { return done(error); }
+      expect(res.headers.location).to.equal('/login');
+      done();
+    });
   });
+});
 
   describe('Sessions Schema:', function() {
     it('contains a sessions table', function(done) {
