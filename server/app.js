@@ -15,24 +15,23 @@ app.use(partials());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../public')));
-app.use(Auth.createSession);
 app.use(cookie);
+app.use(Auth.createSession);
 
-
-
-app.get('/',
+app.get('/', Auth.verifySession,
 (req, res) => {
   console.log('this is req.header--->', req.headers);
   res.render('index');
 });
 
-app.get('/create',
+app.get('/create', Auth.verifySession,
 (req, res) => {
   res.render('index');
 });
 
-app.get('/links',
+app.get('/links', Auth.verifySession,
 (req, res, next) => {
+  console.log('************************************************************')
   models.Links.getAll()
     .then(links => {
       res.status(200).send(links);
@@ -42,11 +41,12 @@ app.get('/links',
     });
 });
 
-app.post('/links',
+app.post('/links', Auth.verifySession,
 (req, res, next) => {
   var url = req.body.url;
   if (!models.Links.isValidUrl(url)) {
     // send back a 404 if link is not valid
+    //console.log('******************************************************')
     return res.sendStatus(404);
   }
 
@@ -87,6 +87,17 @@ app.get('/login',
   res.render('login');
 });
 
+app.get('/logout',
+(req, res, next) => {
+  return models.Sessions.delete({hash:req.cookies.shortlyid})
+  .then(() => {
+    res.clearCookie('shortlyid');
+    console.log('request.session upon logout', req.session);
+    req.session = null;
+    res.redirect('/login');
+  });
+});
+
 app.get('/signup',
 (req, res) => {
   res.render('signup');
@@ -96,65 +107,58 @@ app.post('/signup',
 (req, res) => {
   var username = req.body.username;
   var password = req.body.password;
-  return models.Users.get({username})
-    .then(data => {
-      console.log('the post data is here-->', data);
-      if (!data) {
-        return models.Users.create({username, password});
-      };
 
-      return 'User created!';
-      // } else {
-      //   console.log("Username already exists. Login instead.");
-      //   res.redirect('/login');
-      //   // console.log("User was created");
-      // }
+  return models.Users.get({username})
+    .then(userInfo => {
+      console.log('the post data is here-->', userInfo);
+      if (userInfo) {
+        throw userInfo;
+      };
+      return models.Users.create({username, password});
+
     })
-    .then(data => {
-      if (data === 'User created!') {
-        res.redirect('/signup');
-      } else {
-        Auth.createSession(req, res);
-        res.redirect('/');
-      }
+    .then(results => { // results of user database
+      return models.Sessions.update({ hash: req.session.hash }, { userId: results.insertId });
+    })
+    .then(()=> {
+      res.redirect('/');
     })
     .error(error => {
       res.status(500).send(error);
     })
-    // .catch(() => {
-    //   res.status(200).redirect('/');
-    // });
+    .catch(userInfo => {
+      res.redirect('/signup');
+    })
 });
+
+
 
 app.post('/login',
 (req, res, next) => {
-  // console.log('this is the req.body to post--->', req.body);
   var username = req.body.username;
   var password = req.body.password;
 
-  // console.log('this is req=====>', req);
+
   console.log('this is the req.header', req.headers);
   console.log('this is the req.cookie', req.headers.cookies);
 
   models.Users.get({username: username})
     .then(data => {
       if (data) {
-        // console.log('the post data is here-->', data);
         var passwordDb = data.password;
         var salt = data.salt;
         if (models.Users.compare(password, passwordDb, salt)) {
+          models.Sessions.update({hash: req.session.hash}, {userId: data.id});
           return 'success';
-          //res.redirect('/');
         }
       }
        else {
-        // res.redirect('/login');
         return "Invalid username or password";
       }
     })
     .then(data => {
       if (data === 'success') {
-        Auth.createSession(req, res);
+        // Auth.createSession(req, res);
         res.redirect('/');
       } else {
         res.redirect('/login');

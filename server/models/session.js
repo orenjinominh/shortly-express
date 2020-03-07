@@ -20,7 +20,9 @@ class Sessions extends Model {
    * with a user that is logged in.
    */
   isLoggedIn(session) {
+    console.log('========> session ', session);
     return !!session.user;
+    // return session.hash === req.cookies.shortlyid;
   }
 
   /**
